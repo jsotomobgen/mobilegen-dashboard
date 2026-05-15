@@ -16,11 +16,11 @@ import { useState, useEffect } from "react";
 // Each tab's GID is the number after #gid= in the URL when that tab is open.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SHEET_ID        = process.env.REACT_APP_SHEET_ID        || "";
-const GID_COMPANIES   = process.env.REACT_APP_GID_COMPANIES   || "0";
-const GID_REGIONS     = process.env.REACT_APP_GID_REGIONS     || "1";
-const GID_DISTRICTS   = process.env.REACT_APP_GID_DISTRICTS   || "2";
-const GID_STORES      = process.env.REACT_APP_GID_STORES      || "3";
+const SHEET_ID        = "1cFnQ7vMyjlGGhtZNyLMVoOaRmB0YfCsOw7kQKIrNsSk";
+const GID_COMPANIES   = "0";
+const GID_REGIONS     = "458299654";
+const GID_DISTRICTS   = "1987599027";
+const GID_STORES      = "409419510";
 
 function csvUrl(gid) {
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
