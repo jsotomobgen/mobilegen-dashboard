@@ -23,7 +23,7 @@ const GID_DISTRICTS   = "1987599027";
 const GID_STORES      = "409419510";
 
 function csvUrl(gid) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+  return `https://docs.google.com/spreadsheets/d/1cFnQ7vMyjlGGhtZNyLMVoOaRmB0YfCsOw7kQKIrNsSk/gviz/tq?tqx=out:csv&gid=${gid}`;
 }
 
 function parseCsv(text) {
