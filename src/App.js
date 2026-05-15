@@ -38,15 +38,9 @@ const PREV_DISTRICTS_RAW = [
   {name:"Illinois North",    vals:{pga:0.5738,vhi:0.7264,prem:0.8788,perks:0.5714,vmp:0.4035,pull:0.7647}},
 ];
 
-// Score previous data and build lookup maps keyed by type/name
 const PREV_COMPANIES = PREV_COMPANIES_RAW.map(c=>({...c,scores:score(c.vals)})).sort((a,b)=>b.scores.total-a.scores.total);
 const PREV_REGIONS   = Object.fromEntries(PREV_REGIONS_RAW.map(r=>  [r.name, score(r.vals)]));
 const PREV_DISTRICTS = Object.fromEntries(PREV_DISTRICTS_RAW.map(d=>[d.name, score(d.vals)]));
-const PREV_MG        = PREV_COMPANIES.find(c=>c.type==="Mobile Gen");
-const PREV_MG_RANK   = PREV_COMPANIES.findIndex(c=>c.type==="Mobile Gen")+1;
-
-
-
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const DARK = {
@@ -79,7 +73,6 @@ const LIGHT = {
   bad:     "#CF222E",
   barBg:   "#E5E7EB",
 };
-// C is set at render time inside Dashboard — see useTheme()
 let C = DARK;
 
 function ptsColor(t) {
@@ -88,7 +81,7 @@ function ptsColor(t) {
   return C.bad;
 }
 function metricColor(pct, capped) {
-  if (capped)    return C.warn;
+  if (capped)     return C.warn;
   if (pct >= 100) return C.good;
   return C.bad;
 }
@@ -139,7 +132,7 @@ function MetricStrip({ scores, vals }) {
   );
 }
 
-// ── Row card — compact ────────────────────────────────────────────────────────
+// ── Row card ──────────────────────────────────────────────────────────────────
 function Card({ rank, label, sublabel, scores, vals, isMG, selected, onClick }) {
   const tot  = scores.total;
   const tCol = ptsColor(tot);
@@ -155,7 +148,6 @@ function Card({ rank, label, sublabel, scores, vals, isMG, selected, onClick }) 
       boxShadow:selected?`0 0 0 2px ${C.accent}33`:"none",
     }}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-        {/* rank */}
         <span style={{
           fontSize:rank<=3?15:10, fontWeight:900, flexShrink:0,
           color:rank<=3?["#E3B341","#8B949E","#6E7681"][rank-1]:C.textLow,
@@ -163,7 +155,6 @@ function Card({ rank, label, sublabel, scores, vals, isMG, selected, onClick }) 
         }}>
           {rank<=3?["🥇","🥈","🥉"][rank-1]:rank}
         </span>
-        {/* name */}
         <div style={{flex:1,minWidth:0}}>
           <div style={{
             fontSize:12,fontWeight:700,lineHeight:1.2,
@@ -172,7 +163,6 @@ function Card({ rank, label, sublabel, scores, vals, isMG, selected, onClick }) 
           }}>{label}</div>
           {sublabel && <div style={{fontSize:9,color:C.textLow,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sublabel}</div>}
         </div>
-        {/* pts */}
         <div style={{textAlign:"right",flexShrink:0}}>
           <div style={{fontSize:18,fontWeight:900,color:tCol,lineHeight:1}}>{tot.toFixed(1)}</div>
           <div style={{fontSize:8,color:C.textLow,fontWeight:600}}>/ 150</div>
@@ -185,12 +175,11 @@ function Card({ rank, label, sublabel, scores, vals, isMG, selected, onClick }) 
 }
 
 // ── Detail drawer ─────────────────────────────────────────────────────────────
-function Detail({ item, rank, title, sub1, sub2, compareTo }) {
+function Detail({ item, rank, title, sub1, sub2, compareTo, mgScores }) {
   const { scores, vals } = item;
-  const mgS = MG?.scores;
+  const mgS = mgScores || null;
   return (
     <div style={{display:"flex",flexDirection:"column",gap:1}}>
-      {/* summary */}
       <div style={{background:C.raised,border:`1px solid ${C.border}`,borderRadius:8,padding:"13px 14px",marginBottom:8}}>
         <div style={{fontSize:9,fontWeight:700,color:C.textLow,letterSpacing:".14em",marginBottom:5}}>{title}</div>
         <div style={{fontSize:14,fontWeight:800,color:C.textHi,lineHeight:1.25,marginBottom:sub1?3:0}}>{item.name||item.type}</div>
@@ -215,14 +204,14 @@ function Detail({ item, rank, title, sub1, sub2, compareTo }) {
       </div>
 
       {METRICS.map(m => {
-        const v     = scores[m.key];
-        const pct   = scores[m.key+"_pct"];
-        const raw   = vals?.[m.key];
-        const mgV   = compareTo?mgS?.[m.key]:null;
-        const capped = v!=null&&v>=m.max;
+        const v      = scores[m.key];
+        const pct    = scores[m.key+"_pct"];
+        const raw    = vals?.[m.key];
+        const mgV    = compareTo ? mgS?.[m.key] : null;
+        const capped = v!=null && v>=m.max;
         const col    = metricColor(pct, capped);
-        const rawStr = raw==null?"—":(raw*100).toFixed(1)+"%";
-        const ahead  = mgV!=null&&v!=null&&v>mgV;
+        const rawStr = raw==null ? "—" : (raw*100).toFixed(1)+"%";
+        const ahead  = mgV!=null && v!=null && v>mgV;
         return (
           <div key={m.key} style={{background:C.surface,border:`1px solid ${capped?C.warn+"44":C.border}`,borderRadius:7,padding:"9px 11px",marginBottom:4}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
@@ -259,9 +248,8 @@ function Detail({ item, rank, title, sub1, sub2, compareTo }) {
   );
 }
 
-
 // ── Scoreboard view ───────────────────────────────────────────────────────────
-function Scoreboard() {
+function Scoreboard({ COMPANIES, REGIONS, DISTRICTS, STORES }) {
   const sections = [
     {
       title: "🏢 Companies",
@@ -297,16 +285,12 @@ function Scoreboard() {
     <div style={{ padding: "10px 14px 60px" }}>
       {sections.map((sec) => (
         <div key={sec.title} style={{ marginBottom: 20 }}>
-
-          {/* Section header */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: C.textHi, letterSpacing: ".03em" }}>
               {sec.title}
             </div>
             <div style={{ flex: 1, height: 1, background: C.border }} />
           </div>
-
-          {/* Column headers */}
           <div style={{
             display: "grid",
             gridTemplateColumns: "26px minmax(80px,1fr) repeat(6,44px) 52px",
@@ -321,12 +305,10 @@ function Scoreboard() {
             ))}
             <span style={{ fontSize: 8, fontWeight: 700, color: C.textLow, textAlign: "right" }}>PTS</span>
           </div>
-
-          {/* Data rows */}
           {sec.items.map((item, i) => {
             const { scores, vals } = item;
-            const mg     = sec.isMG(item);
-            const medal  = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+            const mg    = sec.isMG(item);
+            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
             return (
               <div key={i} style={{
                 display: "grid",
@@ -336,16 +318,12 @@ function Scoreboard() {
                 background: mg ? C.gold + "11" : i % 2 === 0 ? C.surface : "transparent",
                 border: mg ? "1px solid " + C.gold + "33" : "1px solid transparent",
               }}>
-
-                {/* Rank */}
                 <span style={{
                   fontSize: medal ? 14 : 10, fontWeight: 900,
                   color: C.textLow, textAlign: "center", lineHeight: 1,
                 }}>
                   {medal !== null ? medal : i + 1}
                 </span>
-
-                {/* Name + subtitle */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{
                     fontSize: 11, fontWeight: mg ? 800 : 600,
@@ -361,8 +339,6 @@ function Scoreboard() {
                     {sec.getSub(item)}
                   </div>
                 </div>
-
-                {/* Per-metric cells */}
                 {METRICS.map((m) => {
                   const pct    = scores[m.key + "_pct"];
                   const pts    = scores[m.key];
@@ -383,8 +359,6 @@ function Scoreboard() {
                     </div>
                   );
                 })}
-
-                {/* Total points */}
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 13, fontWeight: 900, color: ptsColor(scores.total), lineHeight: 1 }}>
                     {scores.total.toFixed(1)}
@@ -400,13 +374,11 @@ function Scoreboard() {
   );
 }
 
-
 // ── Delta Panel ───────────────────────────────────────────────────────────────
 function DeltaPanel({ title, items, prevMap, getPrevKey, isMGonly }) {
   const rows = items
     .map((item, i) => {
       if (isMGonly && item.type !== "Mobile Gen") return null;
-      // For company tab, match by type; for others, match by name key
       let prev = null;
       if (isMGonly) {
         const prevItem = PREV_COMPANIES.find(p => p.type === item.type);
@@ -429,15 +401,12 @@ function DeltaPanel({ title, items, prevMap, getPrevKey, isMGonly }) {
 
   return (
     <div style={{margin:"10px 14px 6px",border:`1px solid ${C.border}`,borderRadius:8,overflow:"hidden"}}>
-      {/* header */}
       <div style={{background:C.raised,padding:"7px 12px",display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:10,fontWeight:800,color:C.textMid,letterSpacing:".1em"}}>
           DAY-OVER-DAY CHANGES — {title}
         </span>
         <span style={{fontSize:9,color:C.textLow}}>5/11 → 5/13</span>
       </div>
-
-      {/* column headers */}
       <div style={{
         display:"grid",
         gridTemplateColumns:"20px 1fr repeat(6,52px) 64px",
@@ -451,8 +420,6 @@ function DeltaPanel({ title, items, prevMap, getPrevKey, isMGonly }) {
         ))}
         <span style={{fontSize:8,fontWeight:700,color:C.textLow,textAlign:"right"}}>TOTAL</span>
       </div>
-
-      {/* delta rows */}
       {rows.map(({item, rank, deltas}, i) => {
         const isMG = item.type === "Mobile Gen";
         const totalD = deltas.total;
@@ -464,16 +431,13 @@ function DeltaPanel({ title, items, prevMap, getPrevKey, isMGonly }) {
             background: isMG ? C.gold+"11" : i%2===0 ? C.surface : "transparent",
             borderBottom:`1px solid ${C.border}`,
           }}>
-            {/* rank */}
             <span style={{fontSize:9,color:C.textLow,textAlign:"center"}}>{rank}</span>
-            {/* name */}
             <div style={{minWidth:0}}>
               <div style={{fontSize:11,fontWeight:isMG?800:600,color:isMG?C.gold:C.textHi,
                 whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                 {item.name || item.type}{isMG?" ★":""}
               </div>
             </div>
-            {/* per-metric deltas */}
             {METRICS.map(m => {
               const d = deltas[m.key];
               return (
@@ -482,12 +446,11 @@ function DeltaPanel({ title, items, prevMap, getPrevKey, isMGonly }) {
                     {arrow(d)}
                   </div>
                   <div style={{fontSize:9,fontWeight:700,color:dCol(d)}}>
-                    {d==null?"—":( (d>0?"+":"")+d.toFixed(1) )}
+                    {d==null?"—":((d>0?"+":"")+d.toFixed(1))}
                   </div>
                 </div>
               );
             })}
-            {/* total delta */}
             <div style={{textAlign:"right"}}>
               <div style={{fontSize:13,fontWeight:900,color:dCol(totalD),lineHeight:1}}>
                 {totalD==null?"—":((totalD>0?"+":"")+totalD.toFixed(1))}
@@ -501,9 +464,7 @@ function DeltaPanel({ title, items, prevMap, getPrevKey, isMGonly }) {
   );
 }
 
-
-// ── Main ──────────────────────────────────────────────────────────────────────
-// ── Loading / Error screens ──────────────────────────────────────────────────
+// ── Loading / Error screens ───────────────────────────────────────────────────
 function LoadingScreen() {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
@@ -523,7 +484,7 @@ function ErrorScreen({ message, onRetry }) {
       <div style={{fontSize:14,color:"#EF4444",fontWeight:700}}>Could not load data</div>
       <div style={{fontSize:12,color:DARK.textMid,textAlign:"center",maxWidth:400}}>{message}</div>
       <div style={{fontSize:11,color:DARK.textLow,textAlign:"center",maxWidth:400}}>
-        Make sure your Google Sheet is published and REACT_APP_SHEET_ID is set in Vercel.
+        Make sure your Google Sheet is published and accessible.
       </div>
       <button onClick={onRetry} style={{marginTop:8,padding:"8px 20px",background:DARK.accent,
         border:"none",borderRadius:6,color:"#FFF",fontWeight:700,cursor:"pointer",fontSize:12}}>
@@ -533,6 +494,7 @@ function ErrorScreen({ message, onRetry }) {
   );
 }
 
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { data, loading, error, lastUpdated, refresh } = useSheetData();
 
@@ -546,14 +508,12 @@ export default function Dashboard() {
   const [copied,  setCopied]  = useState(false);
   const [light,   setLight]   = useState(false);
 
-  // Apply theme globally before any render
   C = light ? LIGHT : DARK;
 
   if (loading) return <LoadingScreen />;
   if (error)   return <ErrorScreen message={error} onRetry={refresh} />;
   if (!data)   return null;
 
-  // Score + sort live data from Google Sheet
   const COMPANIES = data.companies.map(c=>({...c,scores:score(c.vals)})).sort((a,b)=>b.scores.total-a.scores.total);
   const REGIONS   = data.regions.map(r=>({...r,scores:score(r.vals)})).sort((a,b)=>b.scores.total-a.scores.total);
   const DISTRICTS = data.districts.map(d=>({...d,scores:score(d.vals)})).sort((a,b)=>b.scores.total-a.scores.total);
@@ -561,18 +521,17 @@ export default function Dashboard() {
   const MG        = COMPANIES.find(c=>c.type==="Mobile Gen");
   const MG_RANK   = COMPANIES.findIndex(c=>c.type==="Mobile Gen")+1;
 
-  const filtered = distF==="All"?STORES:STORES.filter(s=>s.district===distF);
-  const mgPct    = MG?(MG.scores.total/MAX_PTS)*100:0;
+  const filtered = distF==="All" ? STORES : STORES.filter(s=>s.district===distF);
+  const mgPct    = MG ? (MG.scores.total/MAX_PTS)*100 : 0;
 
-  // when a card is clicked, open drawer on mobile
   function pick(setter, val) { setter(val); setDrawer(true); }
 
   const views = [
-    {id:"scoreboard",label:"📊 Board", n:null},
-    {id:"company",  label:"Co.",      n:COMPANIES.length},
-    {id:"region",   label:"Region",   n:REGIONS.length},
-    {id:"district", label:"District", n:DISTRICTS.length},
-    {id:"store",    label:"Store",    n:STORES.length},
+    {id:"scoreboard", label:"📊 Board", n:null},
+    {id:"company",    label:"Co.",      n:COMPANIES.length},
+    {id:"region",     label:"Region",   n:REGIONS.length},
+    {id:"district",   label:"District", n:DISTRICTS.length},
+    {id:"store",      label:"Store",    n:STORES.length},
   ];
 
   const tabStyle = (on) => ({
@@ -606,7 +565,7 @@ export default function Dashboard() {
           {MG && (
             <div style={{border:`1px solid ${C.gold}44`,borderRadius:7,padding:"8px 12px",textAlign:"center",flexShrink:0}}>
               <div style={{fontSize:8,fontWeight:700,color:C.gold,letterSpacing:".12em"}}>MOBILE GEN</div>
-              <div style={{fontSize:8,color:C.textLow,marginBottom:2}}>Rank #{MG_RANK} / 14</div>
+              <div style={{fontSize:8,color:C.textLow,marginBottom:2}}>Rank #{MG_RANK} / {COMPANIES.length}</div>
               <div style={{fontSize:22,fontWeight:900,color:C.gold,lineHeight:1}}>{MG.scores.total.toFixed(1)}</div>
               <div style={{fontSize:8,color:C.textLow,marginTop:1}}>of 150 pts</div>
               <div style={{marginTop:5,height:3,background:C.barBg,borderRadius:2,overflow:"hidden",width:80}}>
@@ -614,8 +573,6 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-
-          {/* Light / Dark toggle */}
           <button
             onClick={()=>setLight(l=>!l)}
             title={light?"Switch to dark mode":"Switch to light mode"}
@@ -633,8 +590,6 @@ export default function Dashboard() {
             </span>
           </button>
         </div>
-
-        {/* metric legend — single row, tiny */}
         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:10}}>
           {METRICS.map(m=>(
             <div key={m.key} style={{border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 6px",display:"flex",alignItems:"center",gap:3}}>
@@ -648,7 +603,7 @@ export default function Dashboard() {
       {/* ── Quick Reference Summary Strip ── */}
       <div style={{borderBottom:`1px solid ${C.border}`,padding:"8px 14px",display:"flex",gap:6,overflowX:"auto",background:C.bg}}>
         {[
-          { label:"Companies", items: COMPANIES.slice(0,3).map((c,i)=>({rank:i+1, name: c.type==="Mobile Gen"?"Mobile Gen ★": `#${c.mtdRank} ${c.type}`, pts: c.scores.total, isMG: c.type==="Mobile Gen"})), id:"company", extra: `MG #${MG_RANK} · ${MG?.scores.total.toFixed(1)}pts` },
+          { label:"Companies", items: COMPANIES.slice(0,3).map((c,i)=>({rank:i+1, name: c.type==="Mobile Gen"?"Mobile Gen ★":`#${c.mtdRank} ${c.type}`, pts: c.scores.total, isMG: c.type==="Mobile Gen"})), id:"company", extra: `MG #${MG_RANK} · ${MG?.scores.total.toFixed(1)}pts` },
           { label:"Regions",   items: REGIONS.slice(0,3).map((r,i)=>({rank:i+1, name: r.name.replace("Central Midwest & Southeast","CM&SE"), pts: r.scores.total})), id:"region",  extra:null },
           { label:"Districts", items: DISTRICTS.slice(0,3).map((d,i)=>({rank:i+1, name: d.name, pts: d.scores.total})), id:"district", extra:null },
           { label:"Stores",    items: STORES.slice(0,3).map((s,i)=>({rank:i+1, name: s.name, pts: s.scores.total})), id:"store", extra:null },
@@ -659,9 +614,7 @@ export default function Dashboard() {
             borderRadius:7, padding:"7px 10px", cursor:"pointer",
             transition:"border-color .12s",
           }}>
-            {/* section label */}
             <div style={{fontSize:9,fontWeight:800,color:view===section.id?C.accent:C.textMid,letterSpacing:".1em",marginBottom:5}}>{section.label.toUpperCase()}</div>
-            {/* top 3 rows */}
             {section.items.map((item,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:3}}>
                 <span style={{fontSize:9,color:C.textLow,width:12,flexShrink:0,textAlign:"center"}}>
@@ -675,7 +628,6 @@ export default function Dashboard() {
                 <span style={{fontSize:10,fontWeight:800,color:ptsColor(item.pts),flexShrink:0}}>{item.pts.toFixed(0)}</span>
               </div>
             ))}
-            {/* MG callout for company tab */}
             {section.extra && (
               <div style={{marginTop:5,paddingTop:5,borderTop:`1px solid ${C.border}`,fontSize:9,fontWeight:700,color:C.gold}}>{section.extra}</div>
             )}
@@ -692,11 +644,7 @@ export default function Dashboard() {
         ))}
         <div style={{marginLeft:"auto",flexShrink:0}}>
           <button onClick={()=>{
-            const date = "MTD 5/13/2026";
-
-            // ── HTML table builder ──────────────────────────────────────────
-            const tdStyle = (col, bold) =>
-              `style="padding:5px 8px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;${bold?"font-weight:700;":""}color:${col};"`;
+            const date = lastUpdated ? lastUpdated.toLocaleDateString() : "MTD";
             const ptCol = (t) => t>=100?"#16a34a":t>=90?"#d97706":"#dc2626";
             const metCol = (pct, capped) => pct==null?"#9ca3af":capped?"#d97706":pct>=100?"#16a34a":"#dc2626";
 
@@ -710,7 +658,7 @@ export default function Dashboard() {
 
             const itemRow = (item, rankLabel, nameLabel, subLabel, isMG, i) => {
               const { scores, vals } = item;
-              const bg = isMG ? light?"#fefce8":C.surface : i%2===0 ? C.surface : C.bg;
+              const bg = isMG ? "#fefce8" : i%2===0 ? "#161b22" : "#0d1117";
               const metCells = METRICS.map(m => {
                 const pct = scores[m.key+"_pct"];
                 const pts = scores[m.key];
@@ -749,22 +697,12 @@ export default function Dashboard() {
             };
 
             let sections = [];
-            if (view==="scoreboard" || view==="company") {
-              sections.push(buildTable("🏢 Companies", COMPANIES,
-                c=>c.type+(c.type==="Mobile Gen"?" ★":""), c=>"MTD #"+c.mtdRank, c=>c.type==="Mobile Gen"));
-            }
-            if (view==="scoreboard" || view==="region") {
-              sections.push(buildTable("🗺️ Regions", REGIONS,
-                r=>r.name, r=>r.area+" · "+r.doors+" doors", ()=>false));
-            }
-            if (view==="scoreboard" || view==="district") {
-              sections.push(buildTable("📍 Districts", DISTRICTS,
-                d=>d.name, d=>d.doors+" doors", ()=>false));
-            }
-            if (view==="scoreboard" || view==="store") {
+            if (view==="scoreboard"||view==="company")  sections.push(buildTable("🏢 Companies", COMPANIES, c=>c.type+(c.type==="Mobile Gen"?" ★":""), c=>"MTD #"+c.mtdRank, c=>c.type==="Mobile Gen"));
+            if (view==="scoreboard"||view==="region")   sections.push(buildTable("🗺️ Regions",   REGIONS,   r=>r.name, r=>r.area+" · "+r.doors+" doors", ()=>false));
+            if (view==="scoreboard"||view==="district") sections.push(buildTable("📍 Districts", DISTRICTS, d=>d.name, d=>d.doors+" doors", ()=>false));
+            if (view==="scoreboard"||view==="store") {
               const list = view==="store"&&distF!=="All" ? STORES.filter(s=>s.district===distF) : STORES;
-              sections.push(buildTable("🏪 Stores", list,
-                s=>s.name, s=>s.district+" · "+s.region, ()=>false));
+              sections.push(buildTable("🏪 Stores", list, s=>s.name, s=>s.district+" · "+s.region, ()=>false));
             }
 
             const html = `<div style="background:#0d1117;padding:16px;max-width:900px;">
@@ -783,15 +721,11 @@ export default function Dashboard() {
             try {
               const blob = new Blob([html], { type: "text/html" });
               const item = new ClipboardItem({ "text/html": blob });
-              navigator.clipboard.write([item]).then(()=>{
-                setCopied(true);
-                setTimeout(()=>setCopied(false), 2500);
-              });
+              navigator.clipboard.write([item]).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),2500); });
             } catch(e) {
-              // fallback
-              navigator.clipboard.writeText("Mobile Gen " + date + " — MG Rank #" + MG_RANK + " · " + MG?.scores.total.toFixed(1) + " pts");
+              navigator.clipboard.writeText("Mobile Gen "+date+" — MG Rank #"+MG_RANK+" · "+MG?.scores.total.toFixed(1)+" pts");
               setCopied(true);
-              setTimeout(()=>setCopied(false), 2500);
+              setTimeout(()=>setCopied(false),2500);
             }
           }} style={{
             border:`1px solid ${copied?C.good:C.border}`,
@@ -806,19 +740,23 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Body: side-by-side on wide, stacked on narrow ── */}
+      {/* ── Body ── */}
       <div style={{display:"flex",gap:0,alignItems:"flex-start",position:"relative"}}>
 
-        {/* Scoreboard full-width view */}
-        {view==="scoreboard" && <Scoreboard onNavigate={(v)=>{setView(v);setDrawer(false);}} />}
+        {view==="scoreboard" && (
+          <Scoreboard
+            COMPANIES={COMPANIES}
+            REGIONS={REGIONS}
+            DISTRICTS={DISTRICTS}
+            STORES={STORES}
+          />
+        )}
 
-        {/* List panel — hidden on scoreboard */}
         {view!=="scoreboard" && (
         <div style={{
           flex:1, minWidth:0, padding:"10px 14px",
           display: drawer ? "none" : "block",
         }}>
-          {/* MG benchmark */}
           {MG&&(
             <div style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"6px 10px",marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:8,fontWeight:700,color:C.gold,letterSpacing:".08em",flexShrink:0}}>MG LINE</span>
@@ -830,7 +768,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* District filter */}
           {view==="store"&&(
             <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8,alignItems:"center"}}>
               <span style={{fontSize:9,color:C.textMid,fontWeight:600,flexShrink:0}}>District:</span>
@@ -874,38 +811,18 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* ── Delta panels ── */}
           {view==="company" && !drawer && (
-            <DeltaPanel
-              title="MOBILE GEN"
-              items={COMPANIES}
-              prevMap={null}
-              getPrevKey={()=>null}
-              isMGonly={true}
-            />
+            <DeltaPanel title="MOBILE GEN" items={COMPANIES} prevMap={null} getPrevKey={()=>null} isMGonly={true}/>
           )}
           {view==="region" && !drawer && (
-            <DeltaPanel
-              title="ALL REGIONS"
-              items={REGIONS}
-              prevMap={PREV_REGIONS}
-              getPrevKey={(item)=>item.name}
-              isMGonly={false}
-            />
+            <DeltaPanel title="ALL REGIONS" items={REGIONS} prevMap={PREV_REGIONS} getPrevKey={(item)=>item.name} isMGonly={false}/>
           )}
           {view==="district" && !drawer && (
-            <DeltaPanel
-              title="ALL DISTRICTS"
-              items={DISTRICTS}
-              prevMap={PREV_DISTRICTS}
-              getPrevKey={(item)=>item.name}
-              isMGonly={false}
-            />
+            <DeltaPanel title="ALL DISTRICTS" items={DISTRICTS} prevMap={PREV_DISTRICTS} getPrevKey={(item)=>item.name} isMGonly={false}/>
           )}
         </div>
         )}
 
-        {/* Detail panel — hidden on scoreboard */}
         {view!=="scoreboard" && (
         <div style={{
           width: drawer ? "100%" : 280,
@@ -938,13 +855,13 @@ export default function Dashboard() {
               sub1={view==="company"?`Type: ${detailItem.type} · MTD #${detailItem.mtdRank}`:view==="region"?`${detailItem.area} · ${detailItem.doors} doors`:view==="district"?`${detailItem.doors} doors`:detailItem.district}
               sub2={view==="store"?detailItem.region:null}
               compareTo={!(view==="company"&&detailItem.type==="Mobile Gen")}
+              mgScores={MG?.scores}
             />
           )}
         </div>
         )}
       </div>
 
-      {/* Mobile tap hint (only shown when drawer is closed) */}
       {!drawer&&(
         <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"8px 14px",background:C.surface,borderTop:`1px solid ${C.border}`,textAlign:"center",fontSize:10,color:C.textLow}}>
           Tap any card to see full breakdown
