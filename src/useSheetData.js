@@ -1,35 +1,29 @@
 import { useState, useEffect } from "react";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useSheetData — fetches all four tabs from your Google Sheet as CSV
-//
-// Fill in your Sheet ID and tab GIDs in your .env file:
-//   REACT_APP_SHEET_ID=your_sheet_id_here
-//   REACT_APP_GID_COMPANIES=0
-//   REACT_APP_GID_REGIONS=1
-//   REACT_APP_GID_DISTRICTS=2
-//   REACT_APP_GID_STORES=3
-//
-// Your Sheet ID is the long string in the URL:
-//   https://docs.google.com/spreadsheets/d/SHEET_ID/edit
-//
-// Each tab's GID is the number after #gid= in the URL when that tab is open.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SHEET_ID        = "1cFnQ7vMyjlGGhtZNyLMVoOaRmB0YfCsOw7kQKIrNsSk";
-const GID_COMPANIES   = "0";
-const GID_REGIONS     = "458299654";
-const GID_DISTRICTS   = "1987599027";
-const GID_STORES      = "409419510";
+const SHEET_ID      = "1cFnQ7vMyjlGGhtZNyLMVoOaRmB0YfCsOw7kQKIrNsSk";
+const GID_COMPANIES = "0";
+const GID_REGIONS   = "458299654";
+const GID_DISTRICTS = "1987599027";
+const GID_STORES    = "409419510";
+const GID_PREV      = "1115887413";
 
 function csvUrl(gid) {
-  return `https://docs.google.com/spreadsheets/d/1cFnQ7vMyjlGGhtZNyLMVoOaRmB0YfCsOw7kQKIrNsSk/gviz/tq?tqx=out:csv&gid=${gid}`;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
 }
 
 function parseCsv(text) {
-  const lines = text.trim().split("\n").map(l =>
-    l.split(",").map(c => c.trim().replace(/^"|"$/g, ""))
-  );
+  const lines = text.trim().split("\n").map(l => {
+    const cells = [];
+    let cur = "", inQ = false;
+    for (let i = 0; i < l.length; i++) {
+      const ch = l[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ""; }
+      else { cur += ch; }
+    }
+    cells.push(cur.trim());
+    return cells;
+  });
   const headers = lines[0];
   return lines.slice(1)
     .filter(row => row.length >= headers.length && row[0] !== "")
@@ -63,6 +57,39 @@ async function fetchTab(gid) {
   return parseCsv(await res.text());
 }
 
+// Parse Prev tab into lookup maps keyed by section+key
+// Returns { companies: {type: vals}, regions: {name: vals}, districts: {name: vals}, stores: {name: vals}, day: string }
+function parsePrev(rows) {
+  // Figure out today's day name to find matching prev rows
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayDay = days[new Date().getDay()];
+
+  // Filter rows matching today's day
+  const todayRows = rows.filter(r => r.day === todayDay);
+
+  // If no rows for today yet, fall back to most recent available day
+  const useRows = todayRows.length > 0 ? todayRows : rows;
+
+  // Get the day label for display
+  const dayLabel = useRows.length > 0 ? useRows[0].day : null;
+  const dateLabel = useRows.length > 0 ? useRows[0].lastUpdated : null;
+
+  const companies = {};
+  const regions   = {};
+  const districts = {};
+  const stores    = {};
+
+  useRows.forEach(r => {
+    const vals = toVals(r);
+    if (r.section === 'Companies') companies[r.key] = vals;
+    else if (r.section === 'Regions')   regions[r.key]   = vals;
+    else if (r.section === 'Districts') districts[r.key] = vals;
+    else if (r.section === 'Stores')    stores[r.key]    = vals;
+  });
+
+  return { companies, regions, districts, stores, day: dayLabel, date: dateLabel };
+}
+
 export function useSheetData() {
   const [data,        setData]        = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -73,11 +100,12 @@ export function useSheetData() {
     setLoading(true);
     setError(null);
     try {
-      const [compRows, regRows, distRows, storeRows] = await Promise.all([
+      const [compRows, regRows, distRows, storeRows, prevRows] = await Promise.all([
         fetchTab(GID_COMPANIES),
         fetchTab(GID_REGIONS),
         fetchTab(GID_DISTRICTS),
         fetchTab(GID_STORES),
+        fetchTab(GID_PREV),
       ]);
 
       const companies = compRows.map(r => ({
@@ -107,7 +135,9 @@ export function useSheetData() {
         vals:     toVals(r),
       }));
 
-      setData({ companies, regions, districts, stores });
+      const prev = parsePrev(prevRows);
+
+      setData({ companies, regions, districts, stores, prev });
       setLastUpdated(new Date());
     } catch (e) {
       setError(e.message);
@@ -117,6 +147,5 @@ export function useSheetData() {
   };
 
   useEffect(() => { load(); }, []);
-
   return { data, loading, error, lastUpdated, refresh: load };
 }
