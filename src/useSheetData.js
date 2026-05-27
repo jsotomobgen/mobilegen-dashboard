@@ -60,17 +60,24 @@ async function fetchTab(gid) {
 // Parse Prev tab into lookup maps keyed by section+key
 // Returns { companies: {type: vals}, regions: {name: vals}, districts: {name: vals}, stores: {name: vals}, day: string }
 function parsePrev(rows) {
-  // Figure out today's day name to find matching prev rows
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const todayDay = days[new Date().getDay()];
+  const today = new Date();
+  today.setHours(0,0,0,0);
 
-  // Filter rows matching today's day
-  const todayRows = rows.filter(r => r.day === todayDay);
+  // Filter rows matching today's day name AND at least 6 days old
+  const validRows = rows.filter(r => {
+    if (r.day !== todayDay) return false;
+    // Parse the date from lastUpdated (format: M/D/YYYY)
+    const parts = r.lastUpdated.split('/');
+    if (parts.length < 3) return false;
+    const rowDate = new Date(parts[2], parts[0]-1, parts[1]);
+    rowDate.setHours(0,0,0,0);
+    const daysDiff = Math.round((today - rowDate) / (1000*60*60*24));
+    return daysDiff >= 6;
+  });
 
-  // If no rows for today yet, fall back to most recent available day
-  const useRows = todayRows.length > 0 ? todayRows : rows;
-
-  // Get the day label for display
+  const useRows = validRows.length > 0 ? validRows : [];
   const dayLabel = useRows.length > 0 ? useRows[0].day : null;
   const dateLabel = useRows.length > 0 ? useRows[0].lastUpdated : null;
 
@@ -81,7 +88,7 @@ function parsePrev(rows) {
 
   useRows.forEach(r => {
     const vals = toVals(r);
-    if (r.section === 'Companies') companies[r.key] = vals;
+    if (r.section === 'Companies')      companies[r.key] = vals;
     else if (r.section === 'Regions')   regions[r.key]   = vals;
     else if (r.section === 'Districts') districts[r.key] = vals;
     else if (r.section === 'Stores')    stores[r.key]    = vals;
