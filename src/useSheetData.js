@@ -66,8 +66,15 @@ function parsePrev(rows) {
   today.setHours(0,0,0,0);
 
   // Filter rows matching today's day name AND at least 6 days old
-  const validRows = rows.filter(r => {
-    if (r.day !== todayDay) return false;
+// The new filter is just the age check:
+const validRows = rows.filter(r => {
+  const parts = r.lastUpdated.split('/');
+  if (parts.length < 3) return false;
+  const rowDate = new Date(parts[2], parts[0]-1, parts[1]);
+  rowDate.setHours(0,0,0,0);
+  const daysDiff = Math.round((today - rowDate) / (1000*60*60*24));
+  return daysDiff >= 6;
+}); 
     // Parse the date from lastUpdated (format: M/D/YYYY)
     const parts = r.lastUpdated.split('/');
     if (parts.length < 3) return false;
