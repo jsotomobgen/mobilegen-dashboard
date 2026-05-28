@@ -57,36 +57,48 @@ async function fetchTab(gid) {
   return parseCsv(await res.text());
 }
 
-// Parse Prev tab into lookup maps keyed by section+key
-// Returns { companies: {type: vals}, regions: {name: vals}, districts: {name: vals}, stores: {name: vals}, day: string }
+// Parse Prev tab into lookup maps keyed by section+key.
+// Ignores day-name column (unreliable due to timezone drift in Apps Script).
+// Instead, uses the lastUpdated date to find the most recent snapshot
+// that is >= 6 days old — a reliable proxy for "last week's data".
+// Returns { companies, regions, districts, stores, day, date }
 function parsePrev(rows) {
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const todayDay = days[new Date().getDay()];
   const today = new Date();
-  today.setHours(0,0,0,0);
+  today.setHours(0, 0, 0, 0);
 
-  // Filter rows matching today's day name AND at least 6 days old
-// The new filter is just the age check:
-const validRows = rows.filter(r => {
-  const parts = r.lastUpdated.split('/');
-  if (parts.length < 3) return false;
-  const rowDate = new Date(parts[2], parts[0]-1, parts[1]);
-  rowDate.setHours(0,0,0,0);
-  const daysDiff = Math.round((today - rowDate) / (1000*60*60*24));
-  return daysDiff >= 6;
-}); 
-    // Parse the date from lastUpdated (format: M/D/YYYY)
-    const parts = r.lastUpdated.split('/');
-    if (parts.length < 3) return false;
-    const rowDate = new Date(parts[2], parts[0]-1, parts[1]);
-    rowDate.setHours(0,0,0,0);
-    const daysDiff = Math.round((today - rowDate) / (1000*60*60*24));
-    return daysDiff >= 6;
+  function parseRowDate(lastUpdated) {
+    if (!lastUpdated) return null;
+    const parts = lastUpdated.split('/');
+    if (parts.length < 3) return null;
+    const d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  // Keep only rows whose date is >= 6 days ago
+  const validRows = rows.filter(r => {
+    const d = parseRowDate(r.lastUpdated);
+    if (!d) return false;
+    const diff = Math.round((today - d) / (1000 * 60 * 60 * 24));
+    return diff >= 6;
   });
 
-  const useRows = validRows.length > 0 ? validRows : [];
-  const dayLabel = useRows.length > 0 ? useRows[0].day : null;
-  const dateLabel = useRows.length > 0 ? useRows[0].lastUpdated : null;
+  if (validRows.length === 0) {
+    return { companies: {}, regions: {}, districts: {}, stores: {}, day: null, date: null };
+  }
+
+  // Among valid rows, pick the most recent date (closest to today but still >= 6 days old)
+  const uniqueDates = [...new Set(validRows.map(r => r.lastUpdated))];
+  const bestDate = uniqueDates.reduce((best, d) => {
+    return parseRowDate(d) > parseRowDate(best) ? d : best;
+  });
+
+  const useRows = validRows.filter(r => r.lastUpdated === bestDate);
+
+  // Build day label from the actual date (don't trust the day column)
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const bestDateObj = parseRowDate(bestDate);
+  const dayLabel = bestDateObj ? dayNames[bestDateObj.getDay()] : null;
 
   const companies = {};
   const regions   = {};
@@ -95,13 +107,13 @@ const validRows = rows.filter(r => {
 
   useRows.forEach(r => {
     const vals = toVals(r);
-    if (r.section === 'Companies')      companies[r.key] = vals;
+    if      (r.section === 'Companies') companies[r.key] = vals;
     else if (r.section === 'Regions')   regions[r.key]   = vals;
     else if (r.section === 'Districts') districts[r.key] = vals;
     else if (r.section === 'Stores')    stores[r.key]    = vals;
   });
 
-  return { companies, regions, districts, stores, day: dayLabel, date: dateLabel };
+  return { companies, regions, districts, stores, day: dayLabel, date: bestDate };
 }
 
 export function useSheetData() {
