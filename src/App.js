@@ -322,7 +322,7 @@ export default function Dashboard() {
   const [distF,   setDistF]   = useState("All");
   const [drawer,  setDrawer]  = useState(false);
   const [copied,  setCopied]  = useState(false);
-  const [light,   setLight]   = useState(false);
+  const [light,   setLight]   = useState(true);
 
   C = light ? LIGHT : DARK;
 
