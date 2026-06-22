@@ -365,7 +365,7 @@ export default function Dashboard() {
       <div style={{borderBottom:`1px solid ${C.border}`,padding:"14px 14px 10px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
           <div>
-            {lastUpdated && <div style={{fontSize:9,fontWeight:700,color:C.textMid,letterSpacing:".16em",marginBottom:3}}>MTD · Updated {lastUpdated.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} <button onClick={refresh} style={{fontSize:9,color:C.accent,background:'none',border:'none',cursor:'pointer',fontWeight:700}}>↻</button></div>}
+            {lastUpdated && <div style={{fontSize:9,fontWeight:700,color:C.textMid,letterSpacing:".16em",marginBottom:3}}>MTD · As of {lastUpdated.toLocaleDateString([],{month:'short',day:'numeric'})} <button onClick={refresh} style={{fontSize:9,color:C.accent,background:'none',border:'none',cursor:'pointer',fontWeight:700}}>↻</button></div>}
             <div style={{fontSize:18,fontWeight:900,color:C.textHi,letterSpacing:"-.02em",lineHeight:1}}>Points Leaderboard</div>
             <div style={{fontSize:10,color:C.textLow,marginTop:3}}>{COMPANIES.length} cos · {DISTRICTS.length} dists · {STORES.length} stores</div>
           </div>

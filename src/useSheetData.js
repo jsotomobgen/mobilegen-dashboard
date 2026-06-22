@@ -164,7 +164,19 @@ export function useSheetData() {
       const prev = parsePrev(prevRows);
 
       setData({ companies, regions, districts, stores, prev });
-      setLastUpdated(new Date());
+
+      // Use the report date from the sheet itself (not page-load time)
+      const reportDateStr = compRows[0]?.lastUpdated;
+      if (reportDateStr) {
+        const parts = reportDateStr.split('/');
+        if (parts.length >= 3) {
+          setLastUpdated(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
+        } else {
+          setLastUpdated(new Date());
+        }
+      } else {
+        setLastUpdated(new Date());
+      }
     } catch (e) {
       setError(e.message);
     } finally {
