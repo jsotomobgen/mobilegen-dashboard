@@ -1,5 +1,12 @@
 // ── Scoring constants & helpers ───────────────────────────────────────────────
-export const TARGETS = { pga:1.0, vhi:1.0, prem:0.66, perks:0.76, vmp:0.56, pull:0.25 };
+export const TARGETS = {
+  pga:   1.00,
+  vhi:   1.00,
+  pull:  0.23,   // was 0.25
+  prem:  0.67,   // was 0.66
+  vmp:   0.55,   // was 0.56
+  perks: 0.69,   // was 0.76
+};
 
 export const METRICS = [
   { key:"pga",   label:"Phone Gross Adds", abbr:"PGA",   weight:40, max:60 },
