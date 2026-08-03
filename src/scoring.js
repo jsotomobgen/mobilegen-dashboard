@@ -2,23 +2,20 @@
 export const TARGETS = {
   pga:   1.00,
   vhi:   1.00,
-  pull:  0.23,   // was 0.25
-  prem:  0.67,   // was 0.66
-  vmp:   0.55,   // was 0.56
-  perks: 0.69,   // was 0.76
+  perks: 0.70,   // was 0.69
+  pull:  0.14,   // was 0.23
+  vmp:   0.54,   // was 0.55
+  prem:  0.68,   // was 0.67
 };
-
 export const METRICS = [
-  { key:"pga",   label:"Phone Gross Adds", abbr:"PGA",   weight:40, max:60 },
-  { key:"vhi",   label:"VHI Gross Adds",   abbr:"VHI",   weight:20, max:30 },
-  { key:"prem",  label:"Premium Mix",       abbr:"PREM",  weight:10, max:15 },
-  { key:"perks", label:"Perks / Line",      abbr:"PERKS", weight:10, max:15 },
-  { key:"vmp",   label:"Premium VMP",       abbr:"VMP",   weight:10, max:15 },
-  { key:"pull",  label:"Pull Through",      abbr:"PULL",  weight:10, max:15 },
+  { key:"pga",   label:"Phone Gross Adds", abbr:"PGA",   weight:40, max:60   },
+  { key:"vhi",   label:"VHI Gross Adds",   abbr:"VHI",   weight:20, max:30   },
+  { key:"perks", label:"Perks / Line",      abbr:"PERKS", weight:15, max:22.5 },
+  { key:"pull",  label:"Pull Through",      abbr:"PULL",  weight:10, max:15   },
+  { key:"vmp",   label:"Premium VMP",       abbr:"VMP",   weight:10, max:15   },
+  { key:"prem",  label:"Premium Mix",       abbr:"PREM",  weight:5,  max:7.5  },
 ];
-
 export const MAX_PTS = 150;
-
 // score(vals) → { pga, vhi, ..., total, pga_pct, vhi_pct, ... }
 export function score(vals) {
   const s = {}; let tot = 0;
@@ -34,13 +31,11 @@ export function score(vals) {
   s.total = parseFloat(tot.toFixed(2));
   return s;
 }
-
 export function scoreAndSort(items) {
   return items
     .map(item => ({ ...item, scores: score(item.vals) }))
     .sort((a, b) => b.scores.total - a.scores.total);
 }
-
 export function calcDeltas(curr, prev) {
   if (!prev) return null;
   const d = {};
