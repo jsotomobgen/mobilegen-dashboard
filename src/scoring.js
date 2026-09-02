@@ -2,10 +2,10 @@
 export const TARGETS = {
   pga:   1.00,
   vhi:   1.00,
-  perks: 0.70,   // was 0.69
-  pull:  0.14,   // was 0.23
-  vmp:   0.54,   // was 0.55
-  prem:  0.68,   // was 0.67
+  perks: 0.70,
+  pull:  0.17,   // was 0.14
+  vmp:   0.49,   // was 0.54
+  prem:  0.64,   // was 0.68
 };
 export const METRICS = [
   { key:"pga",   label:"Phone Gross Adds", abbr:"PGA",   weight:40, max:60   },
